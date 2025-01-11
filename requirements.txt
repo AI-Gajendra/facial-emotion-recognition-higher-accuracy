@@ -1,9 +1,5 @@
-tensorflow
-keras
+tensorflow==2.13
 pandas
-numpy
-jupyter
-notebook
 tqdm
 opencv-contrib-python
 scikit-learn
