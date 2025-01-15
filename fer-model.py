@@ -5,7 +5,7 @@ from fer import FER
 
 # Function to create the database and table if they don't exist
 def create_database():
-    with sqlite3.connect('emotion_entries.db') as conn:
+    with sqlite3.connect('lab_entries.db') as conn:
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entries (
@@ -33,41 +33,47 @@ def main():
     # Initialize the FER model
     detector = FER()
 
-    # Initialize the webcam
+    # Initialize the webcam with reduced resolution
     webcam = cv2.VideoCapture(0)
+    webcam.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
 
-    logged_faces = set()  # Set to keep track of logged faces
+    frame_counter = 0
 
     while True:
         ret, frame = webcam.read()
-        
+
         if not ret:
             print("Failed to grab frame")
             break
 
-        # Detect emotions in the frame
-        predictions = detector.detect_emotions(frame)
+        # Process every other frame
+        if frame_counter % 2 == 0:
+            # Detect emotions in the frame
+            predictions = detector.detect_emotions(frame)
 
-        for prediction in predictions:
-            # Get bounding box and emotions
-            box = prediction['box']
-            emotions = prediction['emotions']
-            main_emotion = max(emotions, key=emotions.get)
+            for prediction in predictions:
+                # Get bounding box and emotions
+                box = prediction['box']
+                emotions = prediction['emotions']
+                main_emotion = max(emotions, key=emotions.get)
 
-            # Prepare the image for storage
-            x, y, w, h = box
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (173, 216, 230), 2)
-            cv2.putText(frame, f'Predicted: {main_emotion}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+                # Prepare the image for storage
+                x, y, w, h = box
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (173, 216, 230), 2)
+                cv2.putText(frame, f'Predicted: {main_emotion}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
 
-            # Prepare image for storage in database
-            _, buffer = cv2.imencode('.jpg', frame[y:y + h, x:x + w])
-            image_blob = buffer.tobytes()
+                # Prepare image for storage in database
+                _, buffer = cv2.imencode('.jpg', frame[y:y + h, x:x + w])
+                image_blob = buffer.tobytes()
 
-            # Get current timestamp
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                # Get current timestamp
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            # Insert data into the database
-            insert_data(timestamp, main_emotion, image_blob)
+                # Insert data into the database
+                insert_data(timestamp, main_emotion, image_blob)
+
+        frame_counter += 1
 
         cv2.imshow("Emotion Recognition", frame)
 
